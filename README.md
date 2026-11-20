@@ -1,53 +1,37 @@
-# MAHADEV CEMENT PRODUCT — deployable application foundation
+# Mahadev Cement Product – Billing & Customer Portal
 
-This repository contains the current Next.js application foundation and the complete master specification. It includes Neon/PostgreSQL + Prisma data models, password-hashed admin seeding, role-aware login sessions, an admin dashboard summary, and an admin-only customer creation API.
+Next.js 14 (App Router) · TypeScript · Tailwind · Neon PostgreSQL (`pg`) · pdf-lib · WhatsApp Cloud API
 
-> **Scope warning:** this is not yet the complete billing/accounting system. Invoice creation/editing, GST calculation workflow, payment allocation/reversal, customer portal pages, PDF generation, delivery challans, reports/exports, WhatsApp sending/webhooks, audit coverage, and comprehensive automated tests remain to be implemented. Do not use it as the live accounting source of truth until those stages are completed and tested. The dashboard labels outstanding as an estimate.
+## Easiest way: run the SQL file yourself
+1. Neon Console -> SQL Editor -> paste `database/neon-schema.sql` -> Run (creates all tables + admin `admin` / `Admin@12345`).
+2. In Vercel add env vars `DATABASE_URL` (Neon pooled connection string) and `AUTH_SECRET`, then deploy.
+3. Log in at `/login` as `admin` / `Admin@12345` and set a new password when asked.
+(The `/api/setup` route below is an alternative that does the same thing, so you can skip it.)
 
-## Requirements
-- Node.js 20.9 or newer; Git; Neon PostgreSQL; GitHub and Vercel accounts.
+## Deploy on Vercel (about 10 minutes)
 
-## 1. Configure Neon
-1. Create a PostgreSQL project at https://console.neon.tech.
-2. Copy the pooled connection string into `DATABASE_URL`.
-3. Copy the direct/non-pooled connection string into `DIRECT_URL`. These are database URLs, not website domains.
-4. Keep both strings private. Never commit `.env`.
+1. Push this folder to a GitHub repo and **Import** it in Vercel.
+2. In the Vercel project → **Storage → Create/Connect Neon** (Postgres). This adds `DATABASE_URL` automatically.
+3. Project → **Settings → Environment Variables**, add:
+   - `AUTH_SECRET` – long random string (e.g. `openssl rand -base64 48`)
+   - `SETUP_KEY` – any secret string (used once)
+   - `ADMIN_USERNAME` – e.g. `admin`
+   - `ADMIN_PASSWORD` – 8+ characters
+   - (optional) `WHATSAPP_TOKEN`
+4. **Deploy**.
+5. Open once: `https://YOUR-APP.vercel.app/api/setup?key=YOUR_SETUP_KEY`
+   You should see `{"ok":true,"adminCreated":true}`. This creates all tables and the admin login.
+6. Go to `/login`, sign in as admin, open **Settings** and fill company details (name, address, GSTIN, state).
+   Then remove `SETUP_KEY` / `ADMIN_PASSWORD` from Vercel env vars if you like.
 
-## 2. Run locally (Windows PowerShell)
-```powershell
-npm install
-Copy-Item .env.example .env
-```
-Edit `.env` and replace both Neon URLs and `AUTH_SECRET`. Initial admin defaults are `Admin` / `Nihar@4518`. Then run:
-```powershell
-npx prisma generate
-npx prisma db push
-npm run db:seed
-npm run dev
-```
-Open http://localhost:3000. The seed creates the admin only if that username does not already exist; later runs do not reset its password.
+## WhatsApp
+Settings → WhatsApp: Phone Number ID, Business Account ID, access token, verify token (+ app secret).
+Webhook URL for Meta: `https://YOUR-APP.vercel.app/api/whatsapp/webhook` (subscribe to `messages`).
+Sending a PDF without a template only works for customers who messaged your number in the last 24h; otherwise create an
+approved template (DOCUMENT header + 1 body variable) and enter its name in Settings.
+If the API fails, the app offers the fallback (open WhatsApp with prefilled text + download PDF) and does NOT record it as sent.
 
-## 3. Push to GitHub
-Create an empty GitHub repository, then run these commands in this folder (replace the URL):
-```powershell
-git init
-git add .
-git commit -m "Initial MAHADEV CEMENT PRODUCT app"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/YOUR-REPOSITORY.git
-git push -u origin main
-```
-
-## 4. Deploy on Vercel and connect Neon
-1. Import the GitHub repository in Vercel; keep root directory `./`.
-2. In Vercel → Settings → Environment Variables, add `DATABASE_URL` (Neon pooled URL), `DIRECT_URL` (Neon direct URL), `AUTH_SECRET` (unique random secret, 32+ chars), `APP_URL` (your generated `https://your-project.vercel.app` URL), `INITIAL_ADMIN_USERNAME` (`Admin`), and `INITIAL_ADMIN_PASSWORD` (`Nihar@4518`). Add them to Production (and Preview if needed).
-3. Deploy. `vercel.json` runs `npm run vercel-build`: Prisma Client generation, schema sync with `prisma db push`, initial admin creation if absent, then Next.js build.
-4. Vercel provides a free `*.vercel.app` domain; you do not need to buy one.
-
-**Database caution:** `prisma db push` is included for simple first deployment. For business-critical production, move to reviewed Prisma migrations (`prisma migrate deploy`) before ongoing schema changes and back up Neon before schema changes.
-
-## 5. Security
-The initial password is included because it was explicitly requested. Change it before sharing the deployment; do not reuse it elsewhere. Never expose secrets with `NEXT_PUBLIC_`, never commit `.env`, and use a unique `AUTH_SECRET`. Add rate limiting, CSRF/origin protections, complete audit logging, backups and restore tests before public production use.
-
-## 6. Current implementation status
-See `MAHADEV_MASTER_SPECIFICATION.md` for the full requested scope. This ZIP is the foundation stage, not a claim that all modules are finished. WhatsApp variables are placeholders; this starter does not send WhatsApp messages.
+## Notes
+- Money: stored as NUMERIC(14,2); invoice totals are always recalculated on the server.
+- Outstanding = opening balance + invoices – payments. Bill status comes from payment allocations.
+- PDFs use standard fonts: Latin text only, ₹ is printed as "Rs.". Non-Latin names print as "?".

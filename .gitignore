@@ -1,6 +1,5 @@
 node_modules
 .next
 .env
-.env.*
-!.env.example
-*.log
+.env.local
+next-env.d.ts
