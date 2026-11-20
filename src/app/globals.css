@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { @apply bg-gray-50 text-gray-800 antialiased; }
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-medium border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 active:scale-[.98] transition disabled:opacity-50 min-h-[40px] cursor-pointer; }
+  .btn-primary { @apply inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-medium border border-blue-600 bg-blue-600 text-white hover:bg-blue-700 active:scale-[.98] transition disabled:opacity-50 min-h-[40px] cursor-pointer; }
+  .btn-green { @apply inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-medium border border-green-600 bg-green-600 text-white hover:bg-green-700 active:scale-[.98] transition disabled:opacity-50 min-h-[40px] cursor-pointer; }
+  .btn-danger { @apply inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-medium border border-red-300 bg-white text-red-600 hover:bg-red-50 transition disabled:opacity-50 min-h-[40px] cursor-pointer; }
+  .btn-sm { @apply px-2 py-1 text-xs min-h-[32px]; }
+  .input { @apply w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm min-h-[40px] focus:outline-none focus:ring-2 focus:ring-blue-500; }
+  .label { @apply block text-xs font-medium text-gray-600 mb-1; }
+  .card { @apply bg-white rounded-2xl border border-gray-200 shadow-sm p-4; }
+  .th { @apply text-left text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 py-2 bg-gray-50 whitespace-nowrap; }
+  .td { @apply px-3 py-2 border-t border-gray-100 whitespace-nowrap; }
+}
