@@ -1,31 +1,47 @@
-# Mahadev Cement Product – Billing & Customer Portal
+# MAHADEV CEMENT PRODUCT — application foundation
 
-Next.js 14 (App Router) · TypeScript · Tailwind · Neon PostgreSQL (`pg`) · pdf-lib · WhatsApp Cloud API
+This ZIP contains a deployable Next.js foundation for the billing system described in the supplied master specification. It includes a Neon/Prisma schema, database client, secure HTTP-only signed sessions, role-aware login, admin dashboard summary, customer creation API, and admin seed script.
 
-## Deploy on Vercel (about 10 minutes)
+**Important scope note:** This is a foundation/starter, not yet the complete feature set in the master prompt. Invoice creation/editing, tax engine, payment allocation/reversals, customer portal pages, PDFs, delivery challans, reports, full audit coverage and live Meta WhatsApp document delivery still need implementation. Do not use it for production accounting until those modules and tests are completed.
 
-1. Push this folder to a GitHub repo and **Import** it in Vercel.
-2. In the Vercel project → **Storage → Create/Connect Neon** (Postgres). This adds `DATABASE_URL` automatically.
-3. Project → **Settings → Environment Variables**, add:
-   - `AUTH_SECRET` – long random string (e.g. `openssl rand -base64 48`)
-   - `SETUP_KEY` – any secret string (used once)
-   - `ADMIN_USERNAME` – e.g. `admin`
-   - `ADMIN_PASSWORD` – 8+ characters
-   - (optional) `WHATSAPP_TOKEN`
-4. **Deploy**.
-5. Open once: `https://YOUR-APP.vercel.app/api/setup?key=YOUR_SETUP_KEY`
-   You should see `{"ok":true,"adminCreated":true}`. This creates all tables and the admin login.
-6. Go to `/login`, sign in as admin, open **Settings** and fill company details (name, address, GSTIN, state).
-   Then remove `SETUP_KEY` / `ADMIN_PASSWORD` from Vercel env vars if you like.
+## Requirements
+- Node.js 20.9+
+- Neon PostgreSQL database
+- GitHub + Vercel account
 
-## WhatsApp
-Settings → WhatsApp: Phone Number ID, Business Account ID, access token, verify token (+ app secret).
-Webhook URL for Meta: `https://YOUR-APP.vercel.app/api/whatsapp/webhook` (subscribe to `messages`).
-Sending a PDF without a template only works for customers who messaged your number in the last 24h; otherwise create an
-approved template (DOCUMENT header + 1 body variable) and enter its name in Settings.
-If the API fails, the app offers the fallback (open WhatsApp with prefilled text + download PDF) and does NOT record it as sent.
+## Local setup
+1. Extract the ZIP and open the project folder.
+2. Install packages: `npm install`
+3. Copy `.env.example` to `.env`.
+4. In Neon, create a PostgreSQL project and copy its pooled connection string into `DATABASE_URL`. Put the direct connection string in `DIRECT_URL`. Keep both private.
+5. Set `AUTH_SECRET` to a random secret of at least 32 characters. Example generation: `openssl rand -base64 48`.
+6. Set `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD` in your `.env` file before seeding. Use a unique password of at least 12 characters.
+7. Run:
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   npm run db:seed
+   npm run dev
+   ```
+8. Open `http://localhost:3000` and sign in with the admin credentials configured for the seed.
 
-## Notes
-- Money: stored as NUMERIC(14,2); invoice totals are always recalculated on the server.
-- Outstanding = opening balance + invoices – payments. Bill status comes from payment allocations.
-- PDFs use standard fonts: Latin text only, ₹ is printed as "Rs.". Non-Latin names print as "?".
+For a tracked migration workflow, use `npx prisma migrate dev --name init` during development, commit the generated `prisma/migrations` folder, and run `npx prisma migrate deploy` in production.
+
+## Vercel deployment
+1. Push this folder to a new GitHub repository.
+2. Import the repository in Vercel.
+3. Add `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, and `APP_URL` in Vercel Project Settings → Environment Variables. Add WhatsApp variables only after configuring Meta Cloud API.
+4. Deploy. For production schema changes, commit Prisma migrations and run `npx prisma migrate deploy` as a controlled deployment step. Do not run `db push` as a production migration strategy.
+5. Create the first admin using a secure one-time provisioning process. For initial setup, run the seed command in a trusted environment with `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD` set. Never commit credentials.
+
+## Security and deployment notes
+- Do not expose database or WhatsApp credentials through `NEXT_PUBLIC_*`.
+- Configure a strong `AUTH_SECRET`; the app intentionally refuses weak/missing secrets.
+- Add rate limiting at the edge or through a shared store before exposing login publicly.
+- Configure backups and test restore procedures in Neon.
+- Restrict customer API access by authenticated role; extend customer routes using the session's `customerId`, never a browser-supplied customer ID.
+- The current customer creation endpoint is admin-only. Add CSRF/origin protections and audit events as part of production hardening.
+- WhatsApp API credentials are placeholders only; no live messages are sent by this starter.
+
+## Included master specification
+See `MAHADEV_MASTER_SPECIFICATION.md` for the full requested feature and development scope.

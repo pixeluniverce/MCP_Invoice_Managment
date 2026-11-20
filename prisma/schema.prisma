@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+enum InvoiceStatus {
+  DRAFT
+  UNPAID
+  PARTIAL
+  PAID
+  CANCELLED
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CHEQUE
+  OTHER
+}
+
+enum TaxMode {
+  NONE
+  INTRA_STATE
+  INTER_STATE
+}
+
+enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+model User {
+  id                String   @id @default(cuid())
+  username          String   @unique
+  passwordHash      String
+  role              Role     @default(CUSTOMER)
+  customerId        String?  @unique
+  customer          Customer? @relation(fields: [customerId], references: [id])
+  active            Boolean  @default(true)
+  mustChangePassword Boolean @default(false)
+  lastLoginAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Customer {
+  id             String @id @default(cuid())
+  code           String @unique
+  name           String
+  mobile         String
+  alternatePhone String?
+  address        String?
+  city           String?
+  state          String?
+  pincode        String?
+  gstin          String?
+  openingBalance Decimal @default(0) @db.Decimal(14,2)
+  notes          String?
+  active         Boolean @default(true)
+  user           User?
+  invoices       Invoice[]
+  payments       Payment[]
+  challans       DeliveryChallan[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([name])
+  @@index([mobile])
+}
+
+model Product {
+  id          String @id @default(cuid())
+  code        String @unique
+  name        String
+  description String?
+  hsnCode     String?
+  unit        String @default("PCS")
+  rate        Decimal @db.Decimal(14,2)
+  gstPercent  Decimal @default(0) @db.Decimal(6,3)
+  active      Boolean @default(true)
+  items       InvoiceItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([name])
+}
+
+model Invoice {
+  id             String @id @default(cuid())
+  number         String @unique
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id])
+  invoiceDate    DateTime @default(now())
+  dueDate        DateTime?
+  placeOfSupply  String?
+  taxMode        TaxMode @default(NONE)
+  subtotal       Decimal @db.Decimal(14,2)
+  discountTotal  Decimal @default(0) @db.Decimal(14,2)
+  taxTotal       Decimal @default(0) @db.Decimal(14,2)
+  grandTotal     Decimal @db.Decimal(14,2)
+  amountPaid     Decimal @default(0) @db.Decimal(14,2)
+  status         InvoiceStatus @default(UNPAID)
+  notes          String?
+  items          InvoiceItem[]
+  allocations    PaymentAllocation[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([customerId, invoiceDate])
+  @@index([status])
+}
+
+model InvoiceItem {
+  id            String @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId     String?
+  product       Product? @relation(fields: [productId], references: [id])
+  productCode   String
+  name          String
+  description   String?
+  hsnCode       String?
+  quantity      Decimal @db.Decimal(14,3)
+  unit          String
+  rate          Decimal @db.Decimal(14,2)
+  discount      Decimal @default(0) @db.Decimal(14,2)
+  gstPercent    Decimal @default(0) @db.Decimal(6,3)
+  taxableAmount Decimal @db.Decimal(14,2)
+  taxAmount     Decimal @db.Decimal(14,2)
+  totalAmount   Decimal @db.Decimal(14,2)
+}
+
+model Payment {
+  id          String @id @default(cuid())
+  receiptNo   String @unique
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  amount      Decimal @db.Decimal(14,2)
+  mode        PaymentMode
+  reference   String?
+  paidAt      DateTime @default(now())
+  note        String?
+  allocations PaymentAllocation[]
+  createdAt   DateTime @default(now())
+  @@index([customerId, paidAt])
+}
+
+model PaymentAllocation {
+  id        String @id @default(cuid())
+  paymentId String
+  payment   Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+  amount    Decimal @db.Decimal(14,2)
+  @@unique([paymentId, invoiceId])
+}
+
+model DeliveryChallan {
+  id          String @id @default(cuid())
+  number      String @unique
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  challanDate DateTime @default(now())
+  vehicleNo   String?
+  transport   String?
+  description String?
+  createdAt   DateTime @default(now())
+  items       ChallanItem[]
+}
+
+model ChallanItem {
+  id          String @id @default(cuid())
+  challanId   String
+  challan     DeliveryChallan @relation(fields: [challanId], references: [id], onDelete: Cascade)
+  productName String
+  quantity    Decimal @db.Decimal(14,3)
+  unit        String
+}
+
+model CompanySettings {
+  id          String @id @default("main")
+  companyName String @default("MAHADEV CEMENT PRODUCT")
+  address     String?
+  mobile      String?
+  email       String?
+  gstin       String?
+  state       String?
+  stateCode   String?
+  logoUrl     String?
+  gstEnabled  Boolean @default(true)
+  invoicePrefix String @default("MCP")
+  updatedAt   DateTime @updatedAt
+}
+
+model WhatsAppMessage {
+  id          String @id @default(cuid())
+  customerId  String?
+  phone       String
+  type        String
+  status      MessageStatus @default(QUEUED)
+  providerId  String?
+  relatedId   String?
+  error       String?
+  createdAt   DateTime @default(now())
+  @@index([status, createdAt])
+}
+
+model ActivityLog {
+  id        String @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  details   Json?
+  createdAt DateTime @default(now())
+  @@index([createdAt])
+}
+
+model PasswordResetToken {
+  id        String @id @default(cuid())
+  userId    String
+  tokenHash String @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}

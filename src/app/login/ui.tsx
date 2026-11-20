@@ -1,0 +1,7 @@
+"use client";
+import { useState } from "react";
+export default function LoginForm() {
+ const [username,setUsername]=useState(""); const [password,setPassword]=useState(""); const [error,setError]=useState(""); const [busy,setBusy]=useState(false);
+ async function submit(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");try{const r=await fetch("/api/auth/login",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username,password})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Login failed");location.href="/";}catch(x){setError(x instanceof Error?x.message:"Login failed");}finally{setBusy(false);}}
+ return <form onSubmit={submit} className="mt-6 space-y-4"><label className="block text-sm">Username<input required value={username} onChange={e=>setUsername(e.target.value)} className="mt-1 w-full border rounded-lg p-3"/></label><label className="block text-sm">Password<input required type="password" value={password} onChange={e=>setPassword(e.target.value)} className="mt-1 w-full border rounded-lg p-3"/></label>{error&&<p className="text-red-600 text-sm">{error}</p>}<button disabled={busy} className="w-full rounded-lg bg-blue-700 text-white p-3 disabled:opacity-50">{busy?"Signing in…":"Sign in"}</button></form>;
+}
