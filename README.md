@@ -1,47 +1,53 @@
-# MAHADEV CEMENT PRODUCT — application foundation
+# MAHADEV CEMENT PRODUCT — deployable application foundation
 
-This ZIP contains a deployable Next.js foundation for the billing system described in the supplied master specification. It includes a Neon/Prisma schema, database client, secure HTTP-only signed sessions, role-aware login, admin dashboard summary, customer creation API, and admin seed script.
+This repository contains the current Next.js application foundation and the complete master specification. It includes Neon/PostgreSQL + Prisma data models, password-hashed admin seeding, role-aware login sessions, an admin dashboard summary, and an admin-only customer creation API.
 
-**Important scope note:** This is a foundation/starter, not yet the complete feature set in the master prompt. Invoice creation/editing, tax engine, payment allocation/reversals, customer portal pages, PDFs, delivery challans, reports, full audit coverage and live Meta WhatsApp document delivery still need implementation. Do not use it for production accounting until those modules and tests are completed.
+> **Scope warning:** this is not yet the complete billing/accounting system. Invoice creation/editing, GST calculation workflow, payment allocation/reversal, customer portal pages, PDF generation, delivery challans, reports/exports, WhatsApp sending/webhooks, audit coverage, and comprehensive automated tests remain to be implemented. Do not use it as the live accounting source of truth until those stages are completed and tested. The dashboard labels outstanding as an estimate.
 
 ## Requirements
-- Node.js 20.9+
-- Neon PostgreSQL database
-- GitHub + Vercel account
+- Node.js 20.9 or newer; Git; Neon PostgreSQL; GitHub and Vercel accounts.
 
-## Local setup
-1. Extract the ZIP and open the project folder.
-2. Install packages: `npm install`
-3. Copy `.env.example` to `.env`.
-4. In Neon, create a PostgreSQL project and copy its pooled connection string into `DATABASE_URL`. Put the direct connection string in `DIRECT_URL`. Keep both private.
-5. Set `AUTH_SECRET` to a random secret of at least 32 characters. Example generation: `openssl rand -base64 48`.
-6. Set `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD` in your `.env` file before seeding. Use a unique password of at least 12 characters.
-7. Run:
-   ```bash
-   npx prisma generate
-   npx prisma db push
-   npm run db:seed
-   npm run dev
-   ```
-8. Open `http://localhost:3000` and sign in with the admin credentials configured for the seed.
+## 1. Configure Neon
+1. Create a PostgreSQL project at https://console.neon.tech.
+2. Copy the pooled connection string into `DATABASE_URL`.
+3. Copy the direct/non-pooled connection string into `DIRECT_URL`. These are database URLs, not website domains.
+4. Keep both strings private. Never commit `.env`.
 
-For a tracked migration workflow, use `npx prisma migrate dev --name init` during development, commit the generated `prisma/migrations` folder, and run `npx prisma migrate deploy` in production.
+## 2. Run locally (Windows PowerShell)
+```powershell
+npm install
+Copy-Item .env.example .env
+```
+Edit `.env` and replace both Neon URLs and `AUTH_SECRET`. Initial admin defaults are `Admin` / `Nihar@4518`. Then run:
+```powershell
+npx prisma generate
+npx prisma db push
+npm run db:seed
+npm run dev
+```
+Open http://localhost:3000. The seed creates the admin only if that username does not already exist; later runs do not reset its password.
 
-## Vercel deployment
-1. Push this folder to a new GitHub repository.
-2. Import the repository in Vercel.
-3. Add `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`, and `APP_URL` in Vercel Project Settings → Environment Variables. Add WhatsApp variables only after configuring Meta Cloud API.
-4. Deploy. For production schema changes, commit Prisma migrations and run `npx prisma migrate deploy` as a controlled deployment step. Do not run `db push` as a production migration strategy.
-5. Create the first admin using a secure one-time provisioning process. For initial setup, run the seed command in a trusted environment with `INITIAL_ADMIN_USERNAME` and `INITIAL_ADMIN_PASSWORD` set. Never commit credentials.
+## 3. Push to GitHub
+Create an empty GitHub repository, then run these commands in this folder (replace the URL):
+```powershell
+git init
+git add .
+git commit -m "Initial MAHADEV CEMENT PRODUCT app"
+git branch -M main
+git remote add origin https://github.com/YOUR-USERNAME/YOUR-REPOSITORY.git
+git push -u origin main
+```
 
-## Security and deployment notes
-- Do not expose database or WhatsApp credentials through `NEXT_PUBLIC_*`.
-- Configure a strong `AUTH_SECRET`; the app intentionally refuses weak/missing secrets.
-- Add rate limiting at the edge or through a shared store before exposing login publicly.
-- Configure backups and test restore procedures in Neon.
-- Restrict customer API access by authenticated role; extend customer routes using the session's `customerId`, never a browser-supplied customer ID.
-- The current customer creation endpoint is admin-only. Add CSRF/origin protections and audit events as part of production hardening.
-- WhatsApp API credentials are placeholders only; no live messages are sent by this starter.
+## 4. Deploy on Vercel and connect Neon
+1. Import the GitHub repository in Vercel; keep root directory `./`.
+2. In Vercel → Settings → Environment Variables, add `DATABASE_URL` (Neon pooled URL), `DIRECT_URL` (Neon direct URL), `AUTH_SECRET` (unique random secret, 32+ chars), `APP_URL` (your generated `https://your-project.vercel.app` URL), `INITIAL_ADMIN_USERNAME` (`Admin`), and `INITIAL_ADMIN_PASSWORD` (`Nihar@4518`). Add them to Production (and Preview if needed).
+3. Deploy. `vercel.json` runs `npm run vercel-build`: Prisma Client generation, schema sync with `prisma db push`, initial admin creation if absent, then Next.js build.
+4. Vercel provides a free `*.vercel.app` domain; you do not need to buy one.
 
-## Included master specification
-See `MAHADEV_MASTER_SPECIFICATION.md` for the full requested feature and development scope.
+**Database caution:** `prisma db push` is included for simple first deployment. For business-critical production, move to reviewed Prisma migrations (`prisma migrate deploy`) before ongoing schema changes and back up Neon before schema changes.
+
+## 5. Security
+The initial password is included because it was explicitly requested. Change it before sharing the deployment; do not reuse it elsewhere. Never expose secrets with `NEXT_PUBLIC_`, never commit `.env`, and use a unique `AUTH_SECRET`. Add rate limiting, CSRF/origin protections, complete audit logging, backups and restore tests before public production use.
+
+## 6. Current implementation status
+See `MAHADEV_MASTER_SPECIFICATION.md` for the full requested scope. This ZIP is the foundation stage, not a claim that all modules are finished. WhatsApp variables are placeholders; this starter does not send WhatsApp messages.
